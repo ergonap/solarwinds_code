@@ -1,3 +1,4 @@
+--map inventory from https://thwack.solarwinds.com/content-exchange/the-orion-platform/m/custom-queries/4125 
 SELECT
 
 [P].AccountID AS [Map Creator]
