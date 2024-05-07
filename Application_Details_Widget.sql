@@ -1,3 +1,5 @@
+-- from https://thwack.solarwinds.com/content-exchange/the-orion-platform/m/custom-queries/4172 
+
 -- Application List TOP 30
 -- Search by Nodename, IP, Application Name
 SELECT TOP 50 
