@@ -1,4 +1,4 @@
---this mostly is an improvement on Mesverrum's query to incorporate a custom property in the count to make this much easier to sort out. This will specifically query an ALERT's CUSTOM PROPERTY. Not a Node's. 
+--this mostly is an improvement on Mesverrum's query to incorporate a custom property in the ALERT to make this much easier to sort out. This will specifically query an ALERT's CUSTOM PROPERTY. Not a Node's. 
 SELECT DISTINCT 
     ac.Name AS [Alert Name],
     '/Orion/NetPerfMon/ActiveAlertDetails.aspx?NetObject=AAT:' + ToString(AlertObjectID) AS [_linkfor_Alert Name],  
