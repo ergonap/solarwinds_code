@@ -1,7 +1,8 @@
 --I added some simple steps to format OutBps and InBps into MB/GB as an example, modify operational status, and have search for when it's desired
 
 SELECT TOP 1000 ObjectSubType 
-, TypeName
+--  i.CustomProperties.Alert_Enable
+  , TypeName
 , TypeDescription
 , Speed/100000000 as [Speed_GB]
 , MTU
@@ -28,8 +29,7 @@ WHEN Inbps/ 100000 < 1000 THEN CONCAT((Inbps / 100000), ' MB')
 WHEN Inbps / 100000 >= 1000 THEN CONCAT((Inbps/ 100000000), ' GB')
 ELSE NULL
 END as In_packets
-, LastSync, IfName, CustomBandwidth, CustomPollerLastStatisticsPoll, PollInterval, NextPoll, RediscoveryInterval, NextRediscovery, StatCollection, UnPluggable, InterfaceSpeed, InterfaceCaption as [Interface], InterfaceType, InterfaceSubType, MAC, InterfaceName, InterfaceTypeName, AdminStatusLED, OperStatusLED, InterfaceAlias, InterfaceIndex, InterfaceLastChange, InterfaceMTU, InterfaceTypeDescription, OrionIdPrefix, OrionIdColumn, SkippedPollingCycles, MinutesSinceLastSync, InterfaceResponding, Description, DetailsUrl as [_linkfor_IF], i.Node.Caption as [Node], i.Node.DetailsUrl as [_linkfor_Node]
---,i.CustomProperties.Alert_Enable
+, LastSync, IfName, CustomBandwidth, CustomPollerLastStatisticsPoll, PollInterval, NextPoll, RediscoveryInterval, NextRediscovery, StatCollection, UnPluggable, InterfaceSpeed, InterfaceCaption as [Interface], InterfaceType, InterfaceSubType, MAC, InterfaceName, InterfaceTypeName, InterfaceAlias, InterfaceIndex, InterfaceLastChange, InterfaceMTU, InterfaceTypeDescription, InterfaceResponding, Description, DetailsUrl as [_linkfor_IF], i.Node.Caption as [Node], i.Node.DetailsUrl as [_linkfor_Node]
 FROM Orion.NPM.Interfaces as i
 
 -- BELOW IS FOR SEARCH, UNCOMMON IF YOU WANT TO SEARCH ON Node/Interface/Admin Status
