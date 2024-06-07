@@ -12,7 +12,6 @@ WHEN AdminStatus = 2 THEN 'shut'
 ELSE 'unknown'
 END AS AdminStatus
 ,LastChange
-, PhysicalAddress as [MAC]
 , CASE
 WHEN OperStatus = 1 THEN 'Up'
 When OperStatus = 2 THEN 'Down'
@@ -29,7 +28,7 @@ WHEN Inbps/ 100000 < 1000 THEN CONCAT((Inbps / 100000), ' MB')
 WHEN Inbps / 100000 >= 1000 THEN CONCAT((Inbps/ 100000000), ' GB')
 ELSE NULL
 END as In_packets
-, LastSync, IfName, CustomBandwidth, CustomPollerLastStatisticsPoll, PollInterval, NextPoll, RediscoveryInterval, NextRediscovery, StatCollection, UnPluggable, InterfaceSpeed, InterfaceCaption as [Interface], InterfaceType, InterfaceSubType, MAC, InterfaceName, InterfaceTypeName, InterfaceAlias, InterfaceIndex, InterfaceLastChange, InterfaceMTU, InterfaceTypeDescription, InterfaceResponding, Description, DetailsUrl as [_linkfor_IF], i.Node.Caption as [Node], i.Node.DetailsUrl as [_linkfor_Node]
+, LastSync, IfName, CustomBandwidth, CustomPollerLastStatisticsPoll, PollInterval, NextPoll, RediscoveryInterval, NextRediscovery, UnPluggable, InterfaceSpeed, InterfaceCaption as [Interface], InterfaceType, InterfaceSubType, MAC, InterfaceName, InterfaceAlias, InterfaceIndex, InterfaceLastChange, InterfaceMTU, InterfaceTypeDescription, InterfaceResponding, Description, DetailsUrl as [_linkfor_IF], i.Node.Caption as [Node], i.Node.DetailsUrl as [_linkfor_Node]
 FROM Orion.NPM.Interfaces as i
 
 -- BELOW IS FOR SEARCH, UNCOMMON IF YOU WANT TO SEARCH ON Node/Interface/Admin Status
