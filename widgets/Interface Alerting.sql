@@ -32,6 +32,6 @@ END as In_packets
 FROM Orion.NPM.Interfaces as i
 
 -- BELOW IS FOR SEARCH, UNCOMMON IF YOU WANT TO SEARCH ON Node/Interface/Admin Status
--- WHERE i.Node.Caption like '%${Search_String}%'
---OR i.Caption like '%${Search_String}%'
---or AdminStatus like '%${Search_String}%'
+-- WHERE i.Node.Caption like '%${SEARCH_STRING}%'
+--OR i.Caption like '%${SEARCH_STRING}%'
+--or AdminStatus like '%${SEARCH_STRING}%'
