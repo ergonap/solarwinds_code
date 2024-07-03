@@ -10,4 +10,6 @@ I'm also big on
 
 - [Foam](https://github.com/foambubble/foam) and the related:
 - [MermaidJS](http://mermaid.js.org/)
-  - [Mermaid Examples](https://www.freecodecamp.org/news/diagrams-as-code-with-mermaid-github-and-vs-code/) 
+  - [Mermaid Examples](https://www.freecodecamp.org/news/diagrams-as-code-with-mermaid-github-and-vs-code/)
+
+ - [Me on thwack][https://thwack.solarwinds.com/members/designerfx]
