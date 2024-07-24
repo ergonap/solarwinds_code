@@ -52,14 +52,14 @@ while ($quit -ne "Quit" ) {
         default {
             $inputFile = $null
             $openFileDialog = New-Object -TypeName System.Windows.Forms.OpenFileDialog
-            $openFileDialog.Filter = "XML Files (*.xml)|*.xml|All Files (*.*)|*.*"
-            $openFileDialog.Title = "Select the XML file to import"
+            $openFileDialog.Filter = "JSON Files (*.json)|*.json|All Files (*.*)|*.*"
+            $openFileDialog.Title = "Select the JSON file to import"
             
             if ($openFileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                 $inputFile = $openFileDialog.FileName
                 "Selected file: $inputFile"
 
-                # Example insertion point for Import-ModernDashboard
+                # Use Import-ModernDashboard cmdlet with the selected file
                 "Importing Modern Dashboard from $inputFile"
                 Import-ModernDashboard -SwisConnection $swis -Path $inputFile
             } else {
