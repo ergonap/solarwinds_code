@@ -1,1 +1,1 @@
-This is a collection of Custom Search widgets. 
+- This is a collection of Custom Query widgets. 
