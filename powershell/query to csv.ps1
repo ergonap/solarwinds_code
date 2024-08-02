@@ -4,7 +4,7 @@ Add-Type -AssemblyName System.Windows.Forms
 
 # SWQL
 $SwqlQuery = @"
-SELECT Caption, IPAddress, Location 
+SELECT Caption, IPAddress, Location, Uri
 FROM Orion.Nodes
 WHERE Location NOT LIKE '' AND Location NOT LIKE '(Site Code)'
 "@
