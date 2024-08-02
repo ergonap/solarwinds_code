@@ -1,6 +1,7 @@
+# pulls out SNMP Location Data -> Update Custom Property
 Add-Type -AssemblyName System.Windows.Forms
 
-# SWQL query to select nodes with a non-empty location
+# Query
 $SwqlQuery = @"
 SELECT Caption, IPAddress, Location, Uri
 FROM Orion.Nodes
@@ -20,7 +21,7 @@ if (-not ($SwisConnection)) {
     $SwisConnection = Get-SwisConnection -OrionServer $OrionServer
 }
 
-# Test the SWIS connection
+# SWIS Query Validation
 function Test-Connection {
     param (
         [object]$SwisConnection
@@ -33,7 +34,7 @@ function Test-Connection {
     }
 }
 
-# Test the connection
+# SWIS connection Validation (kinda redundant) 
 if (Test-Connection -SwisConnection $SwisConnection) {
     Write-Host "Connection established successfully." -ForegroundColor Green
 } else {
@@ -41,10 +42,10 @@ if (Test-Connection -SwisConnection $SwisConnection) {
     exit
 }
 
-# Execute the SWQL query to get the nodes
+# SWQL
 $QueryResults = Get-SwisData -SwisConnection $SwisConnection -Query $SwqlQuery
 
-# Check if there are any results
+# Not empty
 if ($QueryResults) {
     foreach ($node in $QueryResults) {
         $cpUri = $node.Uri + "/CustomProperties"
