@@ -1,34 +1,64 @@
-Import-Module -Name SwisPowerShell
+Add-Type -AssemblyName System.Windows.Forms
 
-$hostname = 'myOrionServer'
-$creds = Get-Credential
-$swis = Connect-Swis -Hostname $hostname -Credential $creds
-
-# Define the SWQL query
+# SWQL query to select nodes with a non-empty location
 $SwqlQuery = @"
 SELECT Caption, IPAddress, Location, Uri
 FROM Orion.Nodes
 WHERE Location NOT LIKE '' AND Location NOT LIKE '(Site Code)'
 "@
 
-# Execute the SWQL query to get nodes with the specified conditions
-$nodes = Get-SwisData -SwisConnection $swis -Query $SwqlQuery
+function Get-SwisConnection {
+    param (
+        [string]$OrionServer
+    )
+    $SwisCredentials = Get-Credential -Message "Enter your Orion credentials for $OrionServer"
+    return Connect-Swis -Credential $SwisCredentials -Hostname $OrionServer
+}
 
-if ($nodes.Count -eq 0) {
-    Write-Host "No matching nodes found." -ForegroundColor Yellow
+if (-not ($SwisConnection)) {
+    $OrionServer = Read-Host -Prompt "Please enter the DNS name or IP Address for the Orion Server"
+    $SwisConnection = Get-SwisConnection -OrionServer $OrionServer
+}
+
+# Test the SWIS connection
+function Test-Connection {
+    param (
+        [object]$SwisConnection
+    )
+    try {
+        $null = Get-SwisData -SwisConnection $SwisConnection -Query "SELECT TOP 1 NodeID FROM Orion.Nodes"
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+# Test the connection
+if (Test-Connection -SwisConnection $SwisConnection) {
+    Write-Host "Connection established successfully." -ForegroundColor Green
+} else {
+    Write-Host "Failed to establish connection." -ForegroundColor Red
     exit
 }
 
-# Update the custom property LocationData for each node
-foreach ($node in $nodes) {
-    $cpUri = $node.Uri + "/CustomProperties"
-    $properties = @{
-        LocationData = $node.Location
+# Execute the SWQL query to get the nodes
+$QueryResults = Get-SwisData -SwisConnection $SwisConnection -Query $SwqlQuery
+
+# Check if there are any results
+if ($QueryResults) {
+    foreach ($node in $QueryResults) {
+        $cpUri = $node.Uri + "/CustomProperties"
+        $LocationData = $node.Location
+        
+        try {
+            Set-SwisObject -SwisConnection $SwisConnection -Uri $cpUri -Properties @{
+                LocationData = $LocationData
+            }
+            Write-Host "Updated LocationData for node $($node.Caption) to $LocationData" -ForegroundColor Green
+        } catch {
+            Write-Host "Failed to update LocationData for node $($node.Caption)" -ForegroundColor Red
+        }
     }
-
-    # Update the custom property
-    Set-SwisObject -SwisConnection $swis -Uri $cpUri -Properties $properties
-    Write-Host "Updated LocationData for node $($node.Caption) to $($node.Location)" -ForegroundColor Green
+} else {
+    Write-Host "No results found for the query." -ForegroundColor Yellow
 }
-
-Write-Host "Completed updating custom properties." -ForegroundColor Green
