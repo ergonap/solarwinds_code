@@ -41,14 +41,14 @@ $connectionType = Read-Host -Prompt "Should we use the current PowerShell creden
 # Establish the SWIS connection using the new permissions model
 $swis = Set-SwisConnection -solarWindsServer $hostname -connectionType $connectionType
 
-# Path to your XLSX file containing subnets
-$xlsxPath = "C:\path\to\your\subnets.xlsx"
+# Path to your spreadsheet file containing subnets
+$csvPath = "C:\path\to\your\subnets.csv"
 
 # Import Excel module if needed
 # Import-Module ImportExcel
 
-# Import the XLSX file
-$subnets = Import-Excel $xlsxPath # Use Import-Csv if saved as CSV
+# Import the csv file
+$subnets = Import-Csv $csvPath # Use Import-Csv if saved as CSV
 
 # Group the subnets by Level 1 and Level 2
 $groupedSubnets = $subnets | Group-Object -Property Level1, Level2
