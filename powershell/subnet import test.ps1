@@ -104,8 +104,9 @@ $CorePluginConfigurationContextXml = @"
 </CorePluginConfigurationContext>
 "@
 
-$CorePluginConfigurationContext = [xml]$CorePluginConfigurationContextXml
-$CorePluginConfiguration = Invoke-SwisVerb $swis Orion.Discovery CreateCorePluginConfiguration @($CorePluginConfigurationContext)
+# Convert the XML string into an XML document
+$CorePluginConfigurationContext = [xml]$CorePluginConfigurationContextXml.InnerXml
+$CorePluginConfiguration = Invoke-SwisVerb $swis Orion.Discovery CreateCorePluginConfiguration @($CorePluginConfigurationContext.OuterXml)
 
 $InterfacesPluginConfigurationContextXml = @"
 <InterfacesDiscoveryPluginContext xmlns='http://schemas.solarwinds.com/2008/Interfaces' 
@@ -127,9 +128,9 @@ $InterfacesPluginConfigurationContextXml = @"
     <UseDefaults>true</UseDefaults>
 </InterfacesDiscoveryPluginContext>
 "@
-$InterfacesPluginConfigurationContext = [xml]$InterfacesPluginConfigurationContextXml
+$InterfacesPluginConfigurationContext = [xml]$InterfacesPluginConfigurationContextXml.InnerXml
 
-$InterfacesPluginConfiguration = Invoke-SwisVerb $swis Orion.NPM.Interfaces CreateInterfacesPluginConfiguration @($InterfacesPluginConfigurationContext)
+$InterfacesPluginConfiguration = Invoke-SwisVerb $swis Orion.NPM.Interfaces CreateInterfacesPluginConfiguration @($InterfacesPluginConfigurationContext.OuterXml)
 
 $StartDiscoveryContextXml = @"
 <StartDiscoveryContext xmlns='http://schemas.solarwinds.com/2012/Orion/Core' xmlns:i='http://www.w3.org/2001/XMLSchema-instance'>
@@ -155,8 +156,8 @@ $StartDiscoveryContextXml = @"
     </PluginConfigurations>
 </StartDiscoveryContext>
 "@
-$StartDiscoveryContext = [xml]$StartDiscoveryContextXml
+$StartDiscoveryContext = [xml]$StartDiscoveryContextXml.InnerXml
 
-$DiscoveryProfileID = (Invoke-SwisVerb $swis Orion.Discovery StartDiscovery @($StartDiscoveryContext)).InnerText
+$DiscoveryProfileID = (Invoke-SwisVerb $swis Orion.Discovery StartDiscovery @($StartDiscoveryContext.OuterXml)).InnerText
 
 Write-Host "Discovery started. Profile ID: $DiscoveryProfileID"
