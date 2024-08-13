@@ -67,9 +67,7 @@ $pathtocsv = "D:\Scripts\Discovery\SampleImport.csv"
 $importedData = Import-Csv -Path $pathtocsv -Header Column1, Column2, Column3, Column4, Column5
 
 # Initialize the XML string for the bulk list and subnets
-$bulklistXml = ""
 $subnetsXml = ""
-
 foreach ($row in $importedData) {
     # Generate discovery name from Column2 and Column3
     $discoveryName = "$($row.Column2) $($row.Column3)"
@@ -104,9 +102,8 @@ $CorePluginConfigurationContextXml = @"
 </CorePluginConfigurationContext>
 "@
 
-# Convert the XML string into an XML document
-$CorePluginConfigurationContext = [xml]$CorePluginConfigurationContextXml.InnerXml
-$CorePluginConfiguration = Invoke-SwisVerb $swis Orion.Discovery CreateCorePluginConfiguration @($CorePluginConfigurationContext.OuterXml)
+# Send XML strings directly as parameters
+$CorePluginConfiguration = Invoke-SwisVerb $swis Orion.Discovery CreateCorePluginConfiguration @($CorePluginConfigurationContextXml)
 
 $InterfacesPluginConfigurationContextXml = @"
 <InterfacesDiscoveryPluginContext xmlns='http://schemas.solarwinds.com/2008/Interfaces' 
@@ -128,9 +125,8 @@ $InterfacesPluginConfigurationContextXml = @"
     <UseDefaults>true</UseDefaults>
 </InterfacesDiscoveryPluginContext>
 "@
-$InterfacesPluginConfigurationContext = [xml]$InterfacesPluginConfigurationContextXml.InnerXml
 
-$InterfacesPluginConfiguration = Invoke-SwisVerb $swis Orion.NPM.Interfaces CreateInterfacesPluginConfiguration @($InterfacesPluginConfigurationContext.OuterXml)
+$InterfacesPluginConfiguration = Invoke-SwisVerb $swis Orion.NPM.Interfaces CreateInterfacesPluginConfiguration @($InterfacesPluginConfigurationContextXml)
 
 $StartDiscoveryContextXml = @"
 <StartDiscoveryContext xmlns='http://schemas.solarwinds.com/2012/Orion/Core' xmlns:i='http://www.w3.org/2001/XMLSchema-instance'>
@@ -150,14 +146,13 @@ $StartDiscoveryContextXml = @"
     <IsHidden>$DeleteProfileAfterDiscoveryCompletes</IsHidden>
     <PluginConfigurations>
         <PluginConfiguration>
-            <PluginConfigurationItem>$($CorePluginConfiguration.InnerXml)</PluginConfigurationItem>
-            <PluginConfigurationItem>$($InterfacesPluginConfiguration.InnerXml)</PluginConfigurationItem>
+            <PluginConfigurationItem>$CorePluginConfiguration</PluginConfigurationItem>
+            <PluginConfigurationItem>$InterfacesPluginConfiguration</PluginConfigurationItem>
         </PluginConfiguration>
     </PluginConfigurations>
 </StartDiscoveryContext>
 "@
-$StartDiscoveryContext = [xml]$StartDiscoveryContextXml.InnerXml
 
-$DiscoveryProfileID = (Invoke-SwisVerb $swis Orion.Discovery StartDiscovery @($StartDiscoveryContext.OuterXml)).InnerText
+$DiscoveryProfileID = (Invoke-SwisVerb $swis Orion.Discovery StartDiscovery @($StartDiscoveryContextXml)).InnerText
 
 Write-Host "Discovery started. Profile ID: $DiscoveryProfileID"
