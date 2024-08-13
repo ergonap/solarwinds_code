@@ -67,8 +67,11 @@ $pathtocsv = "D:\Scripts\Discovery\SampleImport.csv"
 $importedData = Import-Csv -Path $pathtocsv -Header Column1, Column2, Column3, Column4, Column5
 
 # Build the discovery context
-$bulklist = "<BulkList>"
-$subnets = "<Subnets>"
+$bulklistXml = New-Object System.Text.StringBuilder
+$subnetsXml = New-Object System.Text.StringBuilder
+
+$bulklistXml.AppendLine("<BulkList>")
+$subnetsXml.AppendLine("<Subnets>")
 
 foreach ($row in $importedData) {
     # Generate discovery name from Column2 and Column3
@@ -81,30 +84,37 @@ foreach ($row in $importedData) {
     $subnetMask = Convert-CidrToSubnetMask -cidr $cidr
 
     # Add the subnet to the discovery context
-    $subnets += "<Subnet><SubnetIP>$subnetIP</SubnetIP><SubnetMask>$subnetMask</SubnetMask></Subnet>"
+    $subnetsXml.AppendLine("<Subnet><SubnetIP>$subnetIP</SubnetIP><SubnetMask>$subnetMask</SubnetMask></Subnet>")
 }
 
-$subnets += "</Subnets>"
-$bulklist += "</BulkList>"
+$subnetsXml.AppendLine("</Subnets>")
+$bulklistXml.AppendLine("</BulkList>")
 
 $order = 0
-$credentials = "<Credentials>"
+$credentialsXml = New-Object System.Text.StringBuilder
+$credentialsXml.AppendLine("<Credentials>")
 foreach ($row in $creds) {
     $order++
-    $credentials += "<SharedCredentialInfo><CredentialID>$($row.id)</CredentialID><Order>$order</Order></SharedCredentialInfo>"
+    $credentialsXml.AppendLine("<SharedCredentialInfo><CredentialID>$($row.id)</CredentialID><Order>$order</Order></SharedCredentialInfo>")
 }
-$credentials += "</Credentials>"
+$credentialsXml.AppendLine("</Credentials>")
 
-$footer = @"
+$headerXml = @"
+<CorePluginConfigurationContext xmlns='http://schemas.solarwinds.com/2012/Orion/Core' xmlns:i='http://www.w3.org/2001/XMLSchema-instance'>
+"@
+
+$footerXml = @"
 <WmiRetriesCount>1</WmiRetriesCount>
 <WmiRetryIntervalMiliseconds>1000</WmiRetryIntervalMiliseconds>
 </CorePluginConfigurationContext>
 "@
 
-$CorePluginConfigurationContext = ([xml]($header + $bulklist + $subnets + $credentials + $footer)).DocumentElement
+$CorePluginConfigurationContextXml = $headerXml + $bulklistXml.ToString() + $subnetsXml.ToString() + $credentialsXml.ToString() + $footerXml
+$CorePluginConfigurationContext = [xml]$CorePluginConfigurationContextXml
+
 $CorePluginConfiguration = Invoke-SwisVerb $swis Orion.Discovery CreateCorePluginConfiguration @($CorePluginConfigurationContext)
 
-$InterfacesPluginConfigurationContext = ([xml]"
+$InterfacesPluginConfigurationContextXml = @"
 <InterfacesDiscoveryPluginContext xmlns='http://schemas.solarwinds.com/2008/Interfaces' 
                                   xmlns:a='http://schemas.microsoft.com/2003/10/Serialization/Arrays'>
     <AutoImportStatus>
@@ -123,11 +133,12 @@ $InterfacesPluginConfigurationContext = ([xml]"
     </AutoImportVlanPortTypes>
     <UseDefaults>true</UseDefaults>
 </InterfacesDiscoveryPluginContext>
-").DocumentElement
+"@
+$InterfacesPluginConfigurationContext = [xml]$InterfacesPluginConfigurationContextXml
 
 $InterfacesPluginConfiguration = Invoke-SwisVerb $swis Orion.NPM.Interfaces CreateInterfacesPluginConfiguration @($InterfacesPluginConfigurationContext)
 
-$StartDiscoveryContext = ([xml]"
+$StartDiscoveryContextXml = @"
 <StartDiscoveryContext xmlns='http://schemas.solarwinds.com/2012/Orion/Core' xmlns:i='http://www.w3.org/2001/XMLSchema-instance'>
     <Name>$discoveryName $([DateTime]::Now)</Name>
     <EngineId>$EngineID</EngineId>
@@ -150,7 +161,8 @@ $StartDiscoveryContext = ([xml]"
         </PluginConfiguration>
     </PluginConfigurations>
 </StartDiscoveryContext>
-").DocumentElement
+"@
+$StartDiscoveryContext = [xml]$StartDiscoveryContextXml
 
 $DiscoveryProfileID = (Invoke-SwisVerb $swis Orion.Discovery StartDiscovery @($StartDiscoveryContext)).InnerText
 
