@@ -1,9 +1,17 @@
 <#------------- FUNCTIONS -------------#>
+
+# Function to set up the SWIS connection
 Function Set-SwisConnection {  
     Param(  
-        [Parameter(Mandatory=$true, HelpMessage = "What SolarWinds server are you connecting to (Hostname or IP)?" ) ] [string] $solarWindsServer,  
-        [Parameter(Mandatory=$true, HelpMessage = "Do you want to use the credentials from PowerShell [Trusted], or a new login [Explicit]?" ) ] [ ValidateSet( 'Trusted', 'Explicit' ) ] [ string ] $connectionType,  
-        [Parameter(HelpMessage = "Which credentials should we use for an explicit logon type" ) ] $creds
+        [Parameter(Mandatory=$true, HelpMessage = "What SolarWinds server are you connecting to (Hostname or IP)?" ) ] 
+        [string] $solarWindsServer,  
+        
+        [Parameter(Mandatory=$true, HelpMessage = "Do you want to use the credentials from PowerShell [Trusted], or a new login [Explicit]?" ) ] 
+        [ ValidateSet( 'Trusted', 'Explicit' ) ] 
+        [ string ] $connectionType,  
+        
+        [Parameter(HelpMessage = "Which credentials should we use for an explicit logon type" ) ] 
+        $creds
     )  
      
     IF ( $connectionType -eq 'Trusted'  ) {  
@@ -31,7 +39,8 @@ function Convert-CidrToSubnetMask {
     return $subnetMask
 }
 
-<#------------- ACTUAL SCRIPT -------------#>
+<#------------- MAIN SCRIPT -------------#>
+
 clear-host
 
 # Prompt user for hostname and connection type
@@ -41,109 +50,108 @@ $connectionType = Read-Host -Prompt "Should we use the current PowerShell creden
 # Establish the SWIS connection using the new permissions model
 $swis = Set-SwisConnection -solarWindsServer $hostname -connectionType $connectionType
 
-# Path to your spreadsheet file containing subnets
-$csvPath = "C:\path\to\your\subnets.csv"
+# Query to get list of SNMPv3 creds in use currently
+$query = @"
+SELECT id
+FROM Orion.Credential
+WHERE credentialowner='Orion' AND credentialtype = 'SolarWinds.Orion.Core.Models.Credentials.SnmpCredentialsV3'
+"@
+$creds = Get-SwisData $swis $query
 
-# Import Excel module if needed
-# Import-Module ImportExcel
+# Might need to change this for your environment
+$EngineID = 1
+$DeleteProfileAfterDiscoveryCompletes = "false"
 
-# Import the csv file
-$subnets = Import-Csv $csvPath # Use Import-Csv if saved as CSV
+# Import addresses from CSV file
+$pathtocsv = "D:\Scripts\Discovery\SampleImport.csv"
+$importedData = Import-Csv -Path $pathtocsv -Header Column1, Column2, Column3, Column4, Column5
 
-# Group the subnets by Level 1 and Level 2
-$groupedSubnets = $subnets | Group-Object -Property Level1, Level2
+# Build the discovery context
+$bulklist = "<BulkList>"
+$subnets = "<Subnets>"
 
-# Get the engines from SWIS (replace this with your actual query if needed)
-$nodes = get-swisdata $swis "select ip_address, engineid from orion.nodes n where n.vendor = 'Cisco'"
-$engines = $nodes.engineid | sort-object | Get-Unique
+foreach ($row in $importedData) {
+    # Generate discovery name from Column2 and Column3
+    $discoveryName = "$($row.Column2) $($row.Column3)"
+    
+    # Extract the subnet and convert CIDR to subnet mask
+    $cidrParts = $row.Column5.Split('/')
+    $subnetIP = $cidrParts[0]
+    $cidr = [int]$cidrParts[1]
+    $subnetMask = Convert-CidrToSubnetMask -cidr $cidr
 
-foreach ($group in $groupedSubnets) {
-    $level1 = $group.Name.Split(',')[0].Trim()
-    $level2 = $group.Name.Split(',')[1].Trim()
-
-    foreach ($engine in $engines) {
-        $header = "<CorePluginConfigurationContext xmlns='http://schemas.solarwinds.com/2012/Orion/Core' xmlns:i='http://www.w3.org/2001/XMLSchema-instance'>"
-        $subnetList = "<Subnets>"
-
-        # Add subnets from the group to SubnetList
-        foreach ($subnet in $group.Group) {
-            $cidr = $subnet.Subnet.Split('/')[-1] # Extract the CIDR value (e.g., 22)
-            $subnetIP = $subnet.Subnet.Split('/')[0] # Extract the base IP (e.g., 10.124.16.0)
-            $subnetMask = Convert-CidrToSubnetMask -cidr $cidr
-            $subnetList += "<Subnet><SubnetIP>$subnetIP</SubnetIP><SubnetMask>$subnetMask</SubnetMask></Subnet>"
-        }
-
-        $subnetList += "</Subnets>"
-
-        $creds = Get-SwisData $swis $credquery
-        $order = 1
-        $credentials = "<Credentials>"
-
-        foreach ($row in $creds) {
-            $credentials += "<SharedCredentialInfo><CredentialID>$($row)</CredentialID><Order>$order</Order></SharedCredentialInfo>"
-            $order ++
-        }
-        $credentials += "</Credentials>"
-
-        $footer = @"
-        <WmiRetriesCount>1</WmiRetriesCount>
-        <WmiRetryIntervalMiliseconds>1000</WmiRetryIntervalMiliseconds>
-        </CorePluginConfigurationContext>
-    "@
-
-        $CorePluginConfigurationContext = ([xml]($header + $subnetList + $credentials + $footer)).DocumentElement
-        $CorePluginConfiguration = Invoke-SwisVerb $swis Orion.Discovery CreateCorePluginConfiguration @($CorePluginConfigurationContext)
-
-        $InterfacesPluginConfigurationContext = ([xml]"
-        <InterfacesDiscoveryPluginContext xmlns='http://schemas.solarwinds.com/2008/Interfaces' 
-                                          xmlns:a='http://schemas.microsoft.com/2003/10/Serialization/Arrays'>
-            <AutoImportStatus>
-                <a:string>Up</a:string>
-                <a:string>Down</a:string>
-                <a:string>Shutdown</a:string>
-            </AutoImportStatus>
-            <AutoImportVirtualTypes>
-                <a:string>Virtual</a:string>
-                <a:string>Physical</a:string>
-            </AutoImportVirtualTypes>
-            <AutoImportVlanPortTypes>
-                <a:string>Trunk</a:string>
-                <a:string>Access</a:string>
-                <a:string>Unknown</a:string>
-            </AutoImportVlanPortTypes>
-            <UseDefaults>true</UseDefaults>
-        </InterfacesDiscoveryPluginContext>
-        ").DocumentElement
-
-        $InterfacesPluginConfiguration = Invoke-SwisVerb $swis Orion.NPM.Interfaces CreateInterfacesPluginConfiguration @($InterfacesPluginConfigurationContext)
-
-        $StartDiscoveryContext = ([xml]"
-        <StartDiscoveryContext xmlns='http://schemas.solarwinds.com/2012/Orion/Core' xmlns:i='http://www.w3.org/2001/XMLSchema-instance'>
-            <Name>Scripted Discovery for $level1-$level2 - $([DateTime]::Now)</Name>
-            <EngineId>$Engine</EngineId>
-            <JobTimeoutSeconds>36000</JobTimeoutSeconds>
-            <SearchTimeoutMiliseconds>2000</SearchTimeoutMiliseconds>
-            <SnmpTimeoutMiliseconds>2000</SnmpTimeoutMiliseconds>
-            <SnmpRetries>1</SnmpRetries>
-            <RepeatIntervalMiliseconds>1500</RepeatIntervalMiliseconds>
-            <SnmpPort>161</SnmpPort>
-            <HopCount>0</HopCount>
-            <PreferredSnmpVersion>SNMP2c</PreferredSnmpVersion>
-            <DisableIcmp>true</DisableIcmp>
-            <AllowDuplicateNodes>false</AllowDuplicateNodes>
-            <IsAutoImport>true</IsAutoImport>
-            <IsHidden>$DeleteProfileAfterDiscoveryCompletes</IsHidden>
-            <PluginConfigurations>
-                <PluginConfiguration>
-                    <PluginConfigurationItem>$($CorePluginConfiguration.InnerXml)</PluginConfigurationItem>
-                    <PluginConfigurationItem>$($InterfacesPluginConfiguration.InnerXml)</PluginConfigurationItem>
-                </PluginConfiguration>
-            </PluginConfigurations>
-        </StartDiscoveryContext>
-        ").DocumentElement
-
-        $DiscoveryProfileID = (Invoke-SwisVerb $swis Orion.Discovery StartDiscovery @($StartDiscoveryContext)).InnerText
-
-        "Created Scripted Discovery for $level1-$level2 - $([DateTime]::Now)"
-    }
+    # Add the subnet to the discovery context
+    $subnets += "<Subnet><SubnetIP>$subnetIP</SubnetIP><SubnetMask>$subnetMask</SubnetMask></Subnet>"
 }
+
+$subnets += "</Subnets>"
+$bulklist += "</BulkList>"
+
+$order = 0
+$credentials = "<Credentials>"
+foreach ($row in $creds) {
+    $order++
+    $credentials += "<SharedCredentialInfo><CredentialID>$($row.id)</CredentialID><Order>$order</Order></SharedCredentialInfo>"
+}
+$credentials += "</Credentials>"
+
+$footer = @"
+<WmiRetriesCount>1</WmiRetriesCount>
+<WmiRetryIntervalMiliseconds>1000</WmiRetryIntervalMiliseconds>
+</CorePluginConfigurationContext>
+"@
+
+$CorePluginConfigurationContext = ([xml]($header + $bulklist + $subnets + $credentials + $footer)).DocumentElement
+$CorePluginConfiguration = Invoke-SwisVerb $swis Orion.Discovery CreateCorePluginConfiguration @($CorePluginConfigurationContext)
+
+$InterfacesPluginConfigurationContext = ([xml]"
+<InterfacesDiscoveryPluginContext xmlns='http://schemas.solarwinds.com/2008/Interfaces' 
+                                  xmlns:a='http://schemas.microsoft.com/2003/10/Serialization/Arrays'>
+    <AutoImportStatus>
+        <a:string>Up</a:string>
+        <a:string>Down</a:string>
+        <a:string>Shutdown</a:string>
+    </AutoImportStatus>
+    <AutoImportVirtualTypes>
+        <a:string>Virtual</a:string>
+        <a:string>Physical</a:string>
+    </AutoImportVirtualTypes>
+    <AutoImportVlanPortTypes>
+        <a:string>Trunk</a:string>
+        <a:string>Access</a:string>
+        <a:string>Unknown</a:string>
+    </AutoImportVlanPortTypes>
+    <UseDefaults>true</UseDefaults>
+</InterfacesDiscoveryPluginContext>
+").DocumentElement
+
+$InterfacesPluginConfiguration = Invoke-SwisVerb $swis Orion.NPM.Interfaces CreateInterfacesPluginConfiguration @($InterfacesPluginConfigurationContext)
+
+$StartDiscoveryContext = ([xml]"
+<StartDiscoveryContext xmlns='http://schemas.solarwinds.com/2012/Orion/Core' xmlns:i='http://www.w3.org/2001/XMLSchema-instance'>
+    <Name>$discoveryName $([DateTime]::Now)</Name>
+    <EngineId>$EngineID</EngineId>
+    <JobTimeoutSeconds>3600</JobTimeoutSeconds>
+    <SearchTimeoutMiliseconds>2000</SearchTimeoutMiliseconds>
+    <SnmpTimeoutMiliseconds>2000</SnmpTimeoutMiliseconds>
+    <SnmpRetries>1</SnmpRetries>
+    <RepeatIntervalMiliseconds>1500</RepeatIntervalMiliseconds>
+    <SnmpPort>161</SnmpPort>
+    <HopCount>0</HopCount>
+    <PreferredSnmpVersion>SNMPv3</PreferredSnmpVersion>
+    <DisableIcmp>false</DisableIcmp>
+    <AllowDuplicateNodes>false</AllowDuplicateNodes>
+    <IsAutoImport>$autoImport</IsAutoImport>
+    <IsHidden>$DeleteProfileAfterDiscoveryCompletes</IsHidden>
+    <PluginConfigurations>
+        <PluginConfiguration>
+            <PluginConfigurationItem>$($CorePluginConfiguration.InnerXml)</PluginConfigurationItem>
+            <PluginConfigurationItem>$($InterfacesPluginConfiguration.InnerXml)</PluginConfigurationItem>
+        </PluginConfiguration>
+    </PluginConfigurations>
+</StartDiscoveryContext>
+").DocumentElement
+
+$DiscoveryProfileID = (Invoke-SwisVerb $swis Orion.Discovery StartDiscovery @($StartDiscoveryContext)).InnerText
+
+Write-Host "Discovery started. Profile ID: $DiscoveryProfileID"
