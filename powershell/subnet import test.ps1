@@ -91,68 +91,136 @@ foreach ($row in $creds) {
 }
 $credentialsXml += "</Credentials>"
 
-# Complete XML context for CorePluginConfigurationContext
-$CorePluginConfigurationContextXml = @"
-<CorePluginConfigurationContext xmlns='http://schemas.solarwinds.com/2012/Orion/Core' xmlns:i='http://www.w3.org/2001/XMLSchema-instance'>
-    <BulkList></BulkList>
-    <Subnets>$subnetsXml</Subnets>
-    $credentialsXml
-    <WmiRetriesCount>1</WmiRetriesCount>
-    <WmiRetryIntervalMiliseconds>1000</WmiRetryIntervalMiliseconds>
-</CorePluginConfigurationContext>
-"@
+# Construct the CorePluginConfigurationContext using New-Object to create XML elements
+$CorePluginConfigurationContext = New-Object System.Xml.XmlDocument
+$root = $CorePluginConfigurationContext.CreateElement('CorePluginConfigurationContext')
+$root.SetAttribute('xmlns', 'http://schemas.solarwinds.com/2012/Orion/Core')
+$root.SetAttribute('xmlns:i', 'http://www.w3.org/2001/XMLSchema-instance')
 
-# Send XML strings directly as parameters
-$CorePluginConfiguration = Invoke-SwisVerb $swis Orion.Discovery CreateCorePluginConfiguration @($CorePluginConfigurationContextXml)
+$bulkListElement = $CorePluginConfigurationContext.CreateElement('BulkList')
+$root.AppendChild($bulkListElement)
 
-$InterfacesPluginConfigurationContextXml = @"
-<InterfacesDiscoveryPluginContext xmlns='http://schemas.solarwinds.com/2008/Interfaces' 
-                                  xmlns:a='http://schemas.microsoft.com/2003/10/Serialization/Arrays'>
-    <AutoImportStatus>
-        <a:string>Up</a:string>
-        <a:string>Down</a:string>
-        <a:string>Shutdown</a:string>
-    </AutoImportStatus>
-    <AutoImportVirtualTypes>
-        <a:string>Virtual</a:string>
-        <a:string>Physical</a:string>
-    </AutoImportVirtualTypes>
-    <AutoImportVlanPortTypes>
-        <a:string>Trunk</a:string>
-        <a:string>Access</a:string>
-        <a:string>Unknown</a:string>
-    </AutoImportVlanPortTypes>
-    <UseDefaults>true</UseDefaults>
-</InterfacesDiscoveryPluginContext>
-"@
+$subnetsElement = $CorePluginConfigurationContext.CreateElement('Subnets')
+$subnetsElement.InnerXml = $subnetsXml
+$root.AppendChild($subnetsElement)
 
-$InterfacesPluginConfiguration = Invoke-SwisVerb $swis Orion.NPM.Interfaces CreateInterfacesPluginConfiguration @($InterfacesPluginConfigurationContextXml)
+$credentialsElement = $CorePluginConfigurationContext.CreateElement('Credentials')
+$credentialsElement.InnerXml = $credentialsXml
+$root.AppendChild($credentialsElement)
 
-$StartDiscoveryContextXml = @"
-<StartDiscoveryContext xmlns='http://schemas.solarwinds.com/2012/Orion/Core' xmlns:i='http://www.w3.org/2001/XMLSchema-instance'>
-    <Name>$discoveryName $([DateTime]::Now)</Name>
-    <EngineId>$EngineID</EngineId>
-    <JobTimeoutSeconds>3600</JobTimeoutSeconds>
-    <SearchTimeoutMiliseconds>2000</SearchTimeoutMiliseconds>
-    <SnmpTimeoutMiliseconds>2000</SnmpTimeoutMiliseconds>
-    <SnmpRetries>1</SnmpRetries>
-    <RepeatIntervalMiliseconds>1500</RepeatIntervalMiliseconds>
-    <SnmpPort>161</SnmpPort>
-    <HopCount>0</HopCount>
-    <PreferredSnmpVersion>SNMPv3</PreferredSnmpVersion>
-    <DisableIcmp>false</DisableIcmp>
-    <AllowDuplicateNodes>false</AllowDuplicateNodes>
-    <IsAutoImport>$autoImport</IsAutoImport>
-    <IsHidden>$DeleteProfileAfterDiscoveryCompletes</IsHidden>
-    <PluginConfigurations>
-        <PluginConfiguration>
-            <PluginConfigurationItem>$CorePluginConfiguration</PluginConfigurationItem>
-            <PluginConfigurationItem>$InterfacesPluginConfiguration</PluginConfigurationItem>
-        </PluginConfiguration>
-    </PluginConfigurations>
-</StartDiscoveryContext>
-"@
+$wmiRetriesCountElement = $CorePluginConfigurationContext.CreateElement('WmiRetriesCount')
+$wmiRetriesCountElement.InnerText = '1'
+$root.AppendChild($wmiRetriesCountElement)
 
-$DiscoveryProfileID = (Invoke-SwisVerb $swis Orion.Discovery StartDiscovery @($StartDiscoveryContextXml)).InnerText
+$wmiRetryIntervalElement = $CorePluginConfigurationContext.CreateElement('WmiRetryIntervalMiliseconds')
+$wmiRetryIntervalElement.InnerText = '1000'
+$root.AppendChild($wmiRetryIntervalElement)
+
+$CorePluginConfigurationContext.AppendChild($root)
+
+$CorePluginConfiguration = Invoke-SwisVerb $swis Orion.Discovery CreateCorePluginConfiguration @($CorePluginConfigurationContext.OuterXml)
+
+# Construct the InterfacesPluginConfigurationContext using New-Object to create XML elements
+$InterfacesPluginConfigurationContext = New-Object System.Xml.XmlDocument
+$rootInterfaces = $InterfacesPluginConfigurationContext.CreateElement('InterfacesDiscoveryPluginContext')
+$rootInterfaces.SetAttribute('xmlns', 'http://schemas.solarwinds.com/2008/Interfaces')
+$rootInterfaces.SetAttribute('xmlns:a', 'http://schemas.microsoft.com/2003/10/Serialization/Arrays')
+
+$autoImportStatusElement = $InterfacesPluginConfigurationContext.CreateElement('AutoImportStatus')
+$autoImportStatusElement.InnerXml = "<a:string>Up</a:string><a:string>Down</a:string><a:string>Shutdown</a:string>"
+$rootInterfaces.AppendChild($autoImportStatusElement)
+
+$autoImportVirtualTypesElement = $InterfacesPluginConfigurationContext.CreateElement('AutoImportVirtualTypes')
+$autoImportVirtualTypesElement.InnerXml = "<a:string>Virtual</a:string><a:string>Physical</a:string>"
+$rootInterfaces.AppendChild($autoImportVirtualTypesElement)
+
+$autoImportVlanPortTypesElement = $InterfacesPluginConfigurationContext.CreateElement('AutoImportVlanPortTypes')
+$autoImportVlanPortTypesElement.InnerXml = "<a:string>Trunk</a:string><a:string>Access</a:string><a:string>Unknown</a:string>"
+$rootInterfaces.AppendChild($autoImportVlanPortTypesElement)
+
+$useDefaultsElement = $InterfacesPluginConfigurationContext.CreateElement('UseDefaults')
+$useDefaultsElement.InnerText = 'true'
+$rootInterfaces.AppendChild($useDefaultsElement)
+
+$InterfacesPluginConfigurationContext.AppendChild($rootInterfaces)
+
+$InterfacesPluginConfiguration = Invoke-SwisVerb $swis Orion.NPM.Interfaces CreateInterfacesPluginConfiguration @($InterfacesPluginConfigurationContext.OuterXml)
+
+# Construct the StartDiscoveryContext using New-Object to create XML elements
+$StartDiscoveryContext = New-Object System.Xml.XmlDocument
+$rootDiscovery = $StartDiscoveryContext.CreateElement('StartDiscoveryContext')
+$rootDiscovery.SetAttribute('xmlns', 'http://schemas.solarwinds.com/2012/Orion/Core')
+$rootDiscovery.SetAttribute('xmlns:i', 'http://www.w3.org/2001/XMLSchema-instance')
+
+$nameElement = $StartDiscoveryContext.CreateElement('Name')
+$nameElement.InnerText = "$discoveryName $([DateTime]::Now)"
+$rootDiscovery.AppendChild($nameElement)
+
+$engineIdElement = $StartDiscoveryContext.CreateElement('EngineId')
+$engineIdElement.InnerText = "$EngineID"
+$rootDiscovery.AppendChild($engineIdElement)
+
+$jobTimeoutSecondsElement = $StartDiscoveryContext.CreateElement('JobTimeoutSeconds')
+$jobTimeoutSecondsElement.InnerText = '3600'
+$rootDiscovery.AppendChild($jobTimeoutSecondsElement)
+
+$searchTimeoutElement = $StartDiscoveryContext.CreateElement('SearchTimeoutMiliseconds')
+$searchTimeoutElement.InnerText = '2000'
+$rootDiscovery.AppendChild($searchTimeoutElement)
+
+$snmpTimeoutElement = $StartDiscoveryContext.CreateElement('SnmpTimeoutMiliseconds')
+$snmpTimeoutElement.InnerText = '2000'
+$rootDiscovery.AppendChild($snmpTimeoutElement)
+
+$snmpRetriesElement = $StartDiscoveryContext.CreateElement('SnmpRetries')
+$snmpRetriesElement.InnerText = '1'
+$rootDiscovery.AppendChild($snmpRetriesElement)
+
+$repeatIntervalElement = $StartDiscoveryContext.CreateElement('RepeatIntervalMiliseconds')
+$repeatIntervalElement.InnerText = '1500'
+$rootDiscovery.AppendChild($repeatIntervalElement)
+
+$snmpPortElement = $StartDiscoveryContext.CreateElement('SnmpPort')
+$snmpPortElement.InnerText = '161'
+$rootDiscovery.AppendChild($snmpPortElement)
+
+$hopCountElement = $StartDiscoveryContext.CreateElement('HopCount')
+$hopCountElement.InnerText = '0'
+$rootDiscovery.AppendChild($hopCountElement)
+
+$preferredSnmpVersionElement = $StartDiscoveryContext.CreateElement('PreferredSnmpVersion')
+$preferredSnmpVersionElement.InnerText = 'SNMPv3'
+$rootDiscovery.AppendChild($preferredSnmpVersionElement)
+
+$disableIcmpElement = $StartDiscoveryContext.CreateElement('DisableIcmp')
+$disableIcmpElement.InnerText = 'false'
+$rootDiscovery.AppendChild($disableIcmpElement)
+
+$allowDuplicateNodesElement = $StartDiscoveryContext.CreateElement('AllowDuplicateNodes')
+$allowDuplicateNodesElement.InnerText = 'false'
+$rootDiscovery.AppendChild($allowDuplicateNodesElement)
+
+$isAutoImportElement = $StartDiscoveryContext.CreateElement('IsAutoImport')
+$isAutoImportElement.InnerText = 'true'
+$rootDiscovery.AppendChild($isAutoImportElement)
+
+$isHiddenElement = $StartDiscoveryContext.CreateElement('IsHidden')
+$isHiddenElement.InnerText = "$DeleteProfileAfterDiscoveryCompletes"
+$rootDiscovery.AppendChild($isHiddenElement)
+
+$pluginConfigurationsElement = $StartDiscoveryContext.CreateElement('PluginConfigurations')
+$pluginConfigurationItemElement = $StartDiscoveryContext.CreateElement('PluginConfigurationItem')
+$pluginConfigurationItemElement.InnerXml = "$CorePluginConfiguration"
+$pluginConfigurationsElement.AppendChild($pluginConfigurationItemElement)
+
+$pluginConfigurationItemElement2 = $StartDiscoveryContext.CreateElement('PluginConfigurationItem')
+$pluginConfigurationItemElement2.InnerXml = "$InterfacesPluginConfiguration"
+$pluginConfigurationsElement.AppendChild($pluginConfigurationItemElement2)
+
+$rootDiscovery.AppendChild($pluginConfigurationsElement)
+
+$StartDiscoveryContext.AppendChild($rootDiscovery)
+
+$DiscoveryProfileID = (Invoke-SwisVerb $swis Orion.Discovery StartDiscovery @($StartDiscoveryContext.OuterXml)).InnerText
 
 Write-Host "Discovery started. Profile ID: $DiscoveryProfileID"
