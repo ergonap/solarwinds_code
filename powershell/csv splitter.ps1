@@ -19,7 +19,7 @@ foreach ($group in $groupedData) {
     $outputPath = "C:\path\to\output\$siteName.csv"
 
     # Select only the Subnet column and export to a new CSV file
-    $group.Group | Select-Object -ExpandProperty Subnet | Out-File -FilePath $outputPath -Encoding utf8
+    $group.Group | Select-Object -Property Subnet | Export-Csv -Path $outputPath -NoTypeInformation
 }
 
 Write-Output "CSV files created successfully."
