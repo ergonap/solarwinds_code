@@ -112,13 +112,13 @@ $InterfacesPluginConfigurationContext = ([xml]"
         <a:string>Shutdown</a:string>
     </AutoImportStatus>
     <AutoImportVirtualTypes>
-        <a:string>Virtual</a:string>
+#        <a:string>Virtual</a:string>
         <a:string>Physical</a:string>
     </AutoImportVirtualTypes>
     <AutoImportVlanPortTypes>
         <a:string>Trunk</a:string>
         <a:string>Access</a:string>
-        <a:string>Unknown</a:string>
+ #       <a:string>Unknown</a:string>
     </AutoImportVlanPortTypes>
     <UseDefaults>true</UseDefaults>
 </InterfacesDiscoveryPluginContext>
@@ -130,7 +130,7 @@ $StartDiscoveryContext = ([xml]"
 <StartDiscoveryContext xmlns='http://schemas.solarwinds.com/2012/Orion/Core' xmlns:i='http://www.w3.org/2001/XMLSchema-instance'>
     <Name>$discoveryName $([DateTime]::Now)</Name>
     <EngineId>$EngineID</EngineId>
-    <JobTimeoutSeconds>3600</JobTimeoutSeconds>
+    <JobTimeoutSeconds>5400</JobTimeoutSeconds>
     <SearchTimeoutMiliseconds>2000</SearchTimeoutMiliseconds>
     <SnmpTimeoutMiliseconds>2000</SnmpTimeoutMiliseconds>
     <SnmpRetries>1</SnmpRetries>
