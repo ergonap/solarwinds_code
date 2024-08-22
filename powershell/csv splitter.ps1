@@ -1,9 +1,14 @@
 # Path to the original CSV file
 $csvPath = "C:\path\to\your\original.csv"
 
-# Import the CSV file 
-$data = Import-Csv -Path $csvPath -Delimiter ' ' -Header Site,Subnet
-# this will sort based on the first column to split out to multiple CSV's with the results
+# Import the CSV file with manual parsing
+$data = Get-Content -Path $csvPath | ForEach-Object {
+    $columns = $_ -split ' '
+    [PSCustomObject]@{
+        Site   = $columns[0]
+        Subnet = $columns[1]
+    }
+}
 
 # Group data by Site
 $groupedData = $data | Group-Object -Property Site
