@@ -1,7 +1,7 @@
 SELECT e.Servername as "PollingEngine"
 , Frequency
 , LastRun
-, STatus
+, Status
 , NotImportedNodescount as NewNodes
 , IsAutoImport
 , ChangeNodescount
