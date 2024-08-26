@@ -2,7 +2,7 @@ SELECT TOP 1000 Displayname
 , DataRingRedundant as DataRing_Active
 , StatusDescription
 , ONS.Nodes.IP_Address
-, DataRingSatsuDescription as DataRing_Status
+, DataRingStatusDescription as DataRing_Status
 , PowerRingStatusDescription as PowerRing_Status
 , RingFailure
 , Membercount as Switch_Count
