@@ -1,4 +1,4 @@
-SELECT e.Servername as "PollingEngine"
+SELECT TOP 20 e.Servername as "PollingEngine"
 , Frequency
 , LastRun
 , Status
@@ -8,3 +8,6 @@ SELECT e.Servername as "PollingEngine"
 , RunTimeInSeconds
 FROM Orion.DiscoveryProfiles ODP
 INNER JOIN Orion.Engines e on ODP.EngineID = e.EngineID
+ORDER BY LastRun DESC
+
+--adding order by and top 20 means this doesn't take forever, joining from Orion.Engines makes this take an insane amount of time to parse
