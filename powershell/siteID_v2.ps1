@@ -13,7 +13,7 @@ $SwqlQuery = @"
         n.Caption,
         n.Uri
     FROM Orion.Nodes n
-    WHERE SUBSTRING(n.Caption, 2, 1) = '-'
+    WHERE SUBSTRING(n.Caption, 3, 1) = '-'
 "@
 
 $nodes = Get-SwisData -SwisConnection $SwisConnection -Query $SwqlQuery
