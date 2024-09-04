@@ -1,7 +1,4 @@
-# Load the Swis snap-in if it's not already loaded
-if (!(Get-PSSnapin | Where-Object { $_.Name -eq "SwisSnapin" })) {
-    Add-PSSnapin "SwisSnapin"
-}
+Add-PSSnapin "SwisSnapin"
 
 # Define target host and connect to SolarWinds using trusted credentials
 $hostname = Read-Host -Prompt "Please enter the DNS name or IP Address for the Orion Server"
