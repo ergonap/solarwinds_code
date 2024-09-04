@@ -1,11 +1,15 @@
-Add-PSSnapin "SwisSnapin"
+# Import Swis PowerShell module
+Import-Module SwisPowerShell
 
-# Define target host and connect to SolarWinds using trusted credentials
-$hostname = Read-Host -Prompt "Please enter the DNS name or IP Address for the Orion Server"
-$swis = Connect-Swis -Hostname $hostname -Trusted
+# Connect to SolarWinds with interactive credentials
+if (-not ($SwisConnection)) {
+    $OrionServer = Read-Host -Prompt "Please enter the DNS name or IP Address for the Orion Server"
+    $SwisCredentials = Get-Credential -Message "Enter your Orion credentials for $OrionServer"
+    $SwisConnection = Connect-Swis -Credential $SwisCredentials -Hostname $OrionServer
+}
 
 # Build the SWQL query to get all nodes with their NodeID, Caption, and Uri
-$query = @"
+$SwqlQuery = @"
     SELECT
         n.NodeID,
         n.Caption,
@@ -14,7 +18,7 @@ $query = @"
 "@
 
 # Run the query and assign the results to the $nodes array
-$nodes = Get-SwisData $swis $query
+$nodes = Get-SwisData -SwisConnection $SwisConnection -Query $SwqlQuery
 
 # Iterate over each node and set the SiteName custom property
 foreach ($node in $nodes) {
@@ -28,7 +32,7 @@ foreach ($node in $nodes) {
     $customPropertiesUri = "$($node.Uri)/CustomProperties"
 
     # Update the custom property 'SiteName'
-    Set-SwisObject -SwisConnection $swis -Uri $customPropertiesUri -Properties @{ SiteName = $SiteName }
+    Set-SwisObject -SwisConnection $SwisConnection -Uri $customPropertiesUri -Properties @{ SiteName = $SiteName }
 
     Write-Host "Updated NodeID $($node.NodeID) - Caption: $($node.Caption) with SiteName: $SiteName"
 }
