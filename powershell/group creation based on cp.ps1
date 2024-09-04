@@ -17,14 +17,14 @@ WHERE c.Name IS NULL AND n.SiteName NOT IN ('')
 ORDER BY n.SiteName
 "@
 
-# Retrieve all unique SiteNames to check them
-$siteNames = Get-SwisData $SwisConnection @"
-SELECT n.SiteName
-FROM Orion.NodesCustomProperties n
-WHERE n.SiteName IS NOT NULL
-GROUP BY n.SiteName
-ORDER BY n.SiteName
-"@
+# Check and display the results of the $group query
+if ($group.Count -eq 0) {
+    Write-Host "No new groups need to be created. All SiteNames already have corresponding groups."
+    return
+}
+
+Write-Host "SiteNames found without groups:" -ForegroundColor Cyan
+$group | ForEach-Object { Write-Host " - $($_.SiteName)" }
 
 # Iterate over each unique SiteName and create a group for it if not already present
 foreach ($site in $group) {
@@ -72,7 +72,11 @@ foreach ($site in $group) {
         )).DocumentElement
     )).InnerText
 
-    Write-Host "Group created with ID: $groupId for SiteName: $siteName"
+    if ($groupId) {
+        Write-Host "Group created with ID: $groupId for SiteName: $siteName"
+    } else {
+        Write-Host "Failed to create group for SiteName: $siteName" -ForegroundColor Red
+    }
 }
 
 Write-Host "All groups have been created and configured with dynamic queries based on SiteName." -ForegroundColor Green
