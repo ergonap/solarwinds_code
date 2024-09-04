@@ -1,14 +1,13 @@
-# Import Swis PowerShell module
+# this script will take the FIRST THREE LETTERS of a node only and then assign that as a custom property named SiteName
 Import-Module SwisPowerShell
 
-# Connect to SolarWinds with interactive credentials
+
 if (-not ($SwisConnection)) {
     $OrionServer = Read-Host -Prompt "Please enter the DNS name or IP Address for the Orion Server"
     $SwisCredentials = Get-Credential -Message "Enter your Orion credentials for $OrionServer"
     $SwisConnection = Connect-Swis -Credential $SwisCredentials -Hostname $OrionServer
 }
 
-# Build the SWQL query to get all nodes with their NodeID, Caption, and Uri
 $SwqlQuery = @"
     SELECT
         n.NodeID,
@@ -17,7 +16,7 @@ $SwqlQuery = @"
     FROM Orion.Nodes n
 "@
 
-# Run the query and assign the results to the $nodes array
+
 $nodes = Get-SwisData -SwisConnection $SwisConnection -Query $SwqlQuery
 
 # Iterate over each node and set the SiteName custom property
@@ -27,13 +26,9 @@ foreach ($node in $nodes) {
 
     # Write out which node we're working with
     Write-Host "Working with node: $($node.Caption)..."
-
-    # Construct the SWIS URI for the custom properties of this node
     $customPropertiesUri = "$($node.Uri)/CustomProperties"
-
-    # Update the custom property 'SiteName'
+    #update CP
     Set-SwisObject -SwisConnection $SwisConnection -Uri $customPropertiesUri -Properties @{ SiteName = $SiteName }
-
     Write-Host "Updated NodeID $($node.NodeID) - Caption: $($node.Caption) with SiteName: $SiteName"
 }
 
