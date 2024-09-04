@@ -1,5 +1,5 @@
-Import-Module SwisPowerShell
 
+Import-Module SwisPowerShell
 
 if (-not ($SwisConnection)) {
     $OrionServer = Read-Host -Prompt "Please enter the DNS name or IP Address for the Orion Server"
@@ -13,6 +13,7 @@ SELECT NodeID, Caption
 FROM Orion.Nodes
 "@
 
+# Get all nodes from SolarWinds
 $Nodes = Get-SwisData -SwisConnection $SwisConnection -Query $SwqlQuery
 
 # Loop through each node and set the SiteName custom property
@@ -20,8 +21,8 @@ foreach ($Node in $Nodes) {
     # Extract the first three letters of the node caption
     $SiteName = $Node.Caption.Substring(0, 3)
 
-    # Prepare the Uri for updating the node
-    $Uri = "/Orion/Orion.Nodes/NodeID=$($Node.NodeID)"
+    # Correctly construct the URI for updating the node
+    $Uri = "swis://$OrionServer/Orion/Nodes/NodeID=$($Node.NodeID)"
 
     # Update the custom property 'SiteName'
     Set-SwisObject -SwisConnection $SwisConnection -Uri $Uri -Properties @{ SiteName = $SiteName }
