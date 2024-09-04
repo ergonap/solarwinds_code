@@ -8,68 +8,20 @@ if (-not ($SwisConnection)) {
     $SwisConnection = Connect-Swis -Credential $SwisCredentials -Hostname $OrionServer
 }
 
-# Query to get all unique SiteName values from Orion.NodesCustomProperties where no group exists for that SiteName
+# Direct query to get all unique SiteName values that do not have corresponding groups
 $siteNamesToCreateGroups = Get-SwisData $SwisConnection @"
 SELECT DISTINCT n.SiteName
 FROM Orion.NodesCustomProperties n
 LEFT JOIN Orion.Container c ON c.Name = n.SiteName
-WHERE c.Name IS NULL AND n.SiteName NOT IN ('')
+WHERE c.Name IS NULL AND n.SiteName IS NOT NULL AND n.SiteName NOT IN ('')
 ORDER BY n.SiteName
 "@
 
-# Check if any SiteNames are returned and display them
+# Output for inspection
 if ($siteNamesToCreateGroups.Count -eq 0) {
-    Write-Host "No new groups need to be created. All SiteNames already have corresponding groups or there are no SiteNames." -ForegroundColor Yellow
+    Write-Host "No SiteNames found that need groups. All groups already exist or there are no SiteNames." -ForegroundColor Yellow
     return
 }
 
-Write-Host "SiteNames found without groups:" -ForegroundColor Cyan
-
-# Display the structure of each entry to better understand what is being returned
-foreach ($site in $siteNamesToCreateGroups) {
-    Write-Host "Inspecting data: $($site | Format-Table | Out-String)"
-    Write-Host "SiteName: $($site.SiteName)"
-}
-
-# Iterate over each unique SiteName and create a group for it if not already present
-foreach ($site in $siteNamesToCreateGroups) {
-    $siteName = $site.SiteName
-
-    # Skip if SiteName is empty or null
-    if (-not $siteName) {
-        continue
-    }
-
-    Write-Host "Creating group for SiteName: $siteName"
-
-    # Create the group using Invoke-SwisVerb
-    $groupId = (Invoke-SwisVerb $SwisConnection "Orion.Container" "CreateContainer" @(
-        # Group name
-        $siteName,
-        # Owner, must be 'Core'
-        "Core",
-        # Refresh frequency
-        60,
-        # Status rollup mode:
-        # 0 = Mixed status shows warning
-        # 1 = Show worst status
-        # 2 = Show best status
-        0,
-        # Group description
-        "Group for Site: $siteName",
-        # Polling enabled/disabled = true/false (in lowercase)
-        "true",
-        # Group members (empty for now, as we are not creating dynamic queries)
-        ([xml]@(
-           "<ArrayOfMemberDefinitionInfo xmlns='http://schemas.solarwinds.com/2008/Orion'></ArrayOfMemberDefinitionInfo>"
-        )).DocumentElement
-    )).InnerText
-
-    if ($groupId) {
-        Write-Host "Group created with ID: $groupId for SiteName: $siteName"
-    } else {
-        Write-Host "Failed to create group for SiteName: $siteName" -ForegroundColor Red
-    }
-}
-
-Write-Host "All groups have been created based on SiteName." -ForegroundColor Green
+Write-Host "Retrieved SiteNames that need groups:" -ForegroundColor Cyan
+$siteNamesToCreateGroups | ForEach-Object { Write-Host " - SiteName: '$($_.SiteName)'" }
