@@ -36,10 +36,10 @@ foreach ($container in $containersToUpdate) {
 
     # Check if there's an existing entry in ContainerMemberDefinition; if not, create a new entry
     $existingEntry = Get-SwisData $SwisConnection @"
-    SELECT ContainerID 
-    FROM Orion.ContainerMemberDefinition 
-    WHERE ContainerID = $($container.ContainerID)
-    "@
+SELECT ContainerID 
+FROM Orion.ContainerMemberDefinition 
+WHERE ContainerID = $($container.ContainerID)
+"@  # Ensure there is no whitespace before this terminator
 
     if ($existingEntry.Count -eq 0) {
         # Create a new entry with the new dynamic query
