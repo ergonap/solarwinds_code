@@ -39,7 +39,7 @@ foreach ($container in $containersToUpdate) {
 SELECT ContainerID 
 FROM Orion.ContainerMemberDefinition 
 WHERE ContainerID = $($container.ContainerID)
-"@  # Ensure there is no whitespace before this terminator
+"@
 
     if ($existingEntry.Count -eq 0) {
         # Create a new entry with the new dynamic query
