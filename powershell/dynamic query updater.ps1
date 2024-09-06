@@ -8,14 +8,24 @@ if (-not ($SwisConnection)) {
     $SwisConnection = Connect-Swis -Credential $SwisCredentials -Hostname $OrionServer
 }
 
-# Get all containers with three-character names that do not have a ContainerID in Orion.ContainerMemberDefinition
-$containersToUpdate = Get-SwisData $SwisConnection @"
-SELECT c.ContainerID, c.Name
-FROM Orion.Container c
-LEFT JOIN Orion.ContainerMemberDefinition d ON c.ContainerID = d.ContainerID
-WHERE LEN(c.Name) = 3
-AND d.ContainerID IS NULL
+# Retrieve all containers with three-character names
+$allThreeCharContainers = Get-SwisData $SwisConnection @"
+SELECT ContainerID, Name 
+FROM Orion.Container 
+WHERE LEN(Name) = 3
 "@
+
+# Retrieve all ContainerMemberDefinition entries
+$allMemberDefinitions = Get-SwisData $SwisConnection @"
+SELECT ContainerID 
+FROM Orion.ContainerMemberDefinition
+"@
+
+# Filter containers to only those without a matching entry in ContainerMemberDefinition
+$containersToUpdate = $allThreeCharContainers | Where-Object {
+    $containerID = $_.ContainerID
+    -not ($allMemberDefinitions | Where-Object { $_.ContainerID -eq $containerID })
+}
 
 # Output for inspection
 if ($containersToUpdate.Count -eq 0) {
