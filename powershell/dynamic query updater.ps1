@@ -12,12 +12,9 @@ if (-not ($SwisConnection)) {
 $containersToUpdate = Get-SwisData $SwisConnection @"
 SELECT c.ContainerID, c.Name
 FROM Orion.Container c
+LEFT JOIN Orion.ContainerMemberDefinition d ON c.ContainerID = d.ContainerID
 WHERE LEN(c.Name) = 3
-AND NOT EXISTS (
-    SELECT 1 
-    FROM Orion.ContainerMemberDefinition d
-    WHERE d.ContainerID = c.ContainerID
-)
+AND d.ContainerID IS NULL
 "@
 
 # Output for inspection
