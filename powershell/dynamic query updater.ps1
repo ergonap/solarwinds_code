@@ -8,19 +8,19 @@ if (-not ($SwisConnection)) {
     $SwisConnection = Connect-Swis -Credential $SwisCredentials -Hostname $OrionServer
 }
 
-# Retrieve all containers without any filtering
+# Retrieve all containers from Orion.Container
 $allContainers = Get-SwisData $SwisConnection @"
 SELECT ContainerID, Name 
 FROM Orion.Container
 "@
 
-# Retrieve all ContainerMemberDefinition entries without any filtering
+# Retrieve all ContainerMemberDefinition entries from Orion.ContainerMemberDefinition
 $allMemberDefinitions = Get-SwisData $SwisConnection @"
 SELECT ContainerID 
 FROM Orion.ContainerMemberDefinition
 "@
 
-# Filter containers in PowerShell to only those with three-character names that do not have a corresponding entry in ContainerMemberDefinition
+# Filter containers to only those with three-character names that do not have a matching entry in ContainerMemberDefinition
 $containersToUpdate = $allContainers | Where-Object {
     $_.Name.Length -eq 3 -and -not ($allMemberDefinitions | Where-Object { $_.ContainerID -eq $_.ContainerID })
 }
