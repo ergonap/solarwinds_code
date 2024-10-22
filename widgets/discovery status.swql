@@ -4,7 +4,7 @@ SELECT TOP 20 e.Servername as "PollingEngine"
 , Status
 , NotImportedNodescount as NewNodes
 , IsAutoImport
-, ChangeNodescount
+, ChangedNodescount
 , RunTimeInSeconds
 FROM Orion.DiscoveryProfiles ODP
 INNER JOIN Orion.Engines e on ODP.EngineID = e.EngineID
