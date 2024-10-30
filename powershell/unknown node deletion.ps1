@@ -1,36 +1,31 @@
-<#
-Script to delete all nodes where the vendor is unknown
-#>
+<#------------- CONNECT TO SWIS -------------#>
 
-$SwqlQuery = @"
-SELECT [Nodes].NodeID, [Nodes].Caption, [Nodes].Vendor, [Nodes].Uri 
-FROM Orion.Nodes AS [Nodes]
-WHERE [Nodes].Vendor = 'Unknown'
-"@
+# Prompt for old server's hostname and credentials
+$HostnameOld = Read-Host -Prompt "Please enter the DNS name or IP Address for the OLD Orion Server"
+$SwisCredentialsOld = Get-Credential -Message "Enter your Orion credentials for $HostnameOld"
+$SwisSource = Connect-Swis -Hostname $HostnameOld -Credential $SwisCredentialsOld
 
-if (-not ($SwisConnection)) {
-    $OrionServer = Read-Host -Prompt "Please enter the DNS name or IP Address for the Orion Server"
-    $SwisCredentials = Get-Credential -Message "Enter your Orion credentials for $OrionServer"
-    $SwisConnection = Connect-Swis -Credential $SwisCredentials -Hostname $OrionServer
+# Prompt for new server's hostname and credentials
+$HostnameNew = Read-Host -Prompt "Please enter the DNS name or IP Address for the NEW Orion Server"
+$SwisCredentialsNew = Get-Credential -Message "Enter your Orion credentials for $HostnameNew"
+$SwisDest = Connect-Swis -Hostname $HostnameNew -Credential $SwisCredentialsNew
+
+<#------------- ACTUAL SCRIPT -------------#>
+
+# Get Alert IDs for enabled alerts
+$AlertIDs = Get-SwisData -SwisConnection $SwisSource -Query "SELECT AlertID FROM Orion.AlertConfigurations WHERE Enabled = 'true' and name not like '%syslog%'"
+
+# Migrate the alerts
+foreach ($AlertID in $AlertIDs) {
+    $AlertName = Get-SwisData -SwisConnection $SwisSource -Query "SELECT Name FROM Orion.AlertConfigurations WHERE AlertID = $AlertID"
+    $Existing = Get-SwisData -SwisConnection $SwisDest -Query "SELECT Name FROM Orion.AlertConfigurations WHERE Name = '$AlertName'"
+    
+    if ($Existing.Count -eq 0) { 
+        Write-Output "Migrating alert named: $AlertName"
+        $ExportedAlert = Invoke-SwisVerb -SwisConnection $SwisSource -EntityName Orion.AlertConfigurations -Verb Export -Arguments $AlertID
+        Invoke-SwisVerb -SwisConnection $SwisDest -EntityName Orion.AlertConfigurations -Verb Import -Arguments $ExportedAlert
+    } else { 
+        Write-Output "Alert named: $AlertName already exists, skipping" 
+    }
 }
 
-$NodesToDelete = Get-SwisData -SwisConnection $SwisConnection -Query $SwqlQuery
-if ($NodesToDelete) {
-    Write-Host "Nodes with unknown vendor proposed for deletion:" -ForegroundColor Red
-    $NodesToDelete | ForEach-Object {
-        Write-Host "NodeID: $( $_.NodeID ), Caption: $( $_.Caption ), Vendor: $( $_.Vendor )" -ForegroundColor Red
-    }
-    Write-Host "Total Count: $( $NodesToDelete.Count )" -ForegroundColor Red
-
-    $DoDelete = Read-Host -Prompt "Would you like to proceed with deleting these nodes? [Type 'delete' to confirm]"
-    if ($DoDelete.ToLower() -eq 'delete') {
-        $NodesToDelete.Uri | ForEach-Object {
-            Remove-SwisObject -SwisConnection $SwisConnection -Uri $_
-            Write-Host "Node $( $_ ) has been removed." -ForegroundColor Green
-        }
-    } else {
-        Write-Host "'delete' response not received - No deletions were processed" -ForegroundColor Yellow
-    }
-} else {
-    Write-Host "No nodes with unknown vendor found." -ForegroundColor Green
-}
