@@ -1,35 +1,30 @@
 <#------------- CONNECT TO SWIS -------------#>
-#define old host, credentials, and sql connection string
 
-$hostnameold = 'oldserver'
-#$userold = "user"
-#$passwordold = "pass"
-# create a connection to the SolarWinds API
-#$swissource = connect-swis -host $hostnameold -username $userold -password $passwordold -ignoresslerrors
-$swissource = Connect-Swis -Hostname $hostnameold -Trusted
+# Prompt for old server's hostname and credentials
+$HostnameOld = Read-Host -Prompt "Please enter the DNS name or IP Address for the OLD Orion Server"
+$SwisCredentialsOld = Get-Credential -Message "Enter your Orion credentials for $HostnameOld"
+$SwisSource = Connect-Swis -Hostname $HostnameOld -Credential $SwisCredentialsOld
 
-#define new host, credentials, no sql string is necessary
-$hostnamenew = 'newserver'
-#$usernew = "user"
-#$passwordnew = "pass"
-# create a connection to the SolarWinds API
-#$swisdest = connect-swis -host $hostnamenew -username $usernew -password $passwordnew -ignoresslerrors
-$swisdest = Connect-Swis -Hostname $hostnamenew -Trusted
+# Prompt for new server's hostname and credentials
+$HostnameNew = Read-Host -Prompt "Please enter the DNS name or IP Address for the NEW Orion Server"
+$SwisCredentialsNew = Get-Credential -Message "Enter your Orion credentials for $HostnameNew"
+$SwisDest = Connect-Swis -Hostname $HostnameNew -Credential $SwisCredentialsNew
 
 <#------------- ACTUAL SCRIPT -------------#>
 
-# get Alert IDs for enabled alerts
-$AlertIDs = Get-SwisData -SwisConnection $swissource -Query "SELECT AlertID FROM Orion.AlertConfigurations WHERE Enabled = 'true' and name not like '%syslog%'"
+# Get Alert IDs for enabled alerts
+$AlertIDs = Get-SwisData -SwisConnection $SwisSource -Query "SELECT AlertID FROM Orion.AlertConfigurations WHERE Enabled = 'true' and name not like '%syslog%'"
 
-# migrate the alerts
+# Migrate the alerts
 foreach ($AlertID in $AlertIDs) {
-    $AlertName = Get-SwisData -SwisConnection $swissource -Query "SELECT Name FROM Orion.AlertConfigurations WHERE AlertID = $AlertID"
-    $Existing = Get-SwisData -SwisConnection $swisdest "select name from orion.alertconfigurations where name = '$AlertName'"
-    if ($existing.count -eq 0) { 
-        write-output "Migrating alert named: $AlertName"
-        $ExportedAlert = Invoke-SwisVerb $swissource Orion.AlertConfigurations Export $AlertID
-        Invoke-SwisVerb $swisdest Orion.AlertConfigurations Import $ExportedAlert
+    $AlertName = Get-SwisData -SwisConnection $SwisSource -Query "SELECT Name FROM Orion.AlertConfigurations WHERE AlertID = $AlertID"
+    $Existing = Get-SwisData -SwisConnection $SwisDest -Query "SELECT Name FROM Orion.AlertConfigurations WHERE Name = '$AlertName'"
+    
+    if ($Existing.Count -eq 0) { 
+        Write-Output "Migrating alert named: $AlertName"
+        $ExportedAlert = Invoke-SwisVerb -SwisConnection $SwisSource -EntityName Orion.AlertConfigurations -Verb Export -Arguments $AlertID
+        Invoke-SwisVerb -SwisConnection $SwisDest -EntityName Orion.AlertConfigurations -Verb Import -Arguments $ExportedAlert
     } else { 
-        "Alert named: $AlertName already exists, skipping" 
+        Write-Output "Alert named: $AlertName already exists, skipping" 
     }
 }
