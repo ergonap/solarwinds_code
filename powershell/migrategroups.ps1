@@ -13,7 +13,7 @@ $SwisDest = Connect-Swis -Hostname $HostnameNew -Credential $SwisCredentialsNew
 <#------------- ACTUAL SCRIPT -------------#>
 
 # Get Group IDs and Names for enabled groups
-$GroupIDs = Get-SwisData -SwisConnection $SwisSource -Query "SELECT ContainerID, Name FROM Orion.Container WHERE Enabled = 'true'"
+$GroupIDs = Get-SwisData -SwisConnection $SwisSource -Query "SELECT ContainerID, Name FROM Orion.Container"
 
 # Migrate the groups
 foreach ($Group in $GroupIDs) {
