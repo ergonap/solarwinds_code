@@ -36,21 +36,24 @@ foreach ($Group in $Groups) {
             $members += @{ Name = $GroupName; Definition = "filter:/Orion.Nodes[$($Query.Expression)]" }
         }
 
+        # Convert members to XML format
+        $memberXml = [xml]@(
+            "<ArrayOfMemberDefinitionInfo xmlns='http://schemas.solarwinds.com/2008/Orion'>",
+            [string]($members | ForEach-Object {
+                "<MemberDefinitionInfo><Name>$($_.Name)</Name><Definition>$($_.Definition)</Definition></MemberDefinitionInfo>"
+            }),
+            "</ArrayOfMemberDefinitionInfo>"
+        ).DocumentElement
+
         # Create the group in the destination with dynamic members
         $groupId = Invoke-SwisVerb -SwisConnection $SwisDest -EntityName "Orion.Container" -Verb "CreateContainer" -Arguments @(
-            $GroupName,   # Group Name
-            "Core",       # Owner
-            60,           # Refresh Frequency (seconds)
-            0,            # Status rollup mode: 0 = Mixed
-            $GroupDescription,  # Group Description
-            "true",       # Polling enabled
-            ([xml]@(
-                "<ArrayOfMemberDefinitionInfo xmlns='http://schemas.solarwinds.com/2008/Orion'>",
-                [string]($members | ForEach-Object {
-                    "<MemberDefinitionInfo><Name>$($_.Name)</Name><Definition>$($_.Definition)</Definition></MemberDefinitionInfo>"
-                }),
-                "</ArrayOfMemberDefinitionInfo>"
-            )).DocumentElement
+            $GroupName,       # Group Name
+            "Core",           # Owner, must be 'Core'
+            60,               # Refresh Frequency (in seconds)
+            0,                # Status Rollup Mode: 0 = Mixed Status Shows Warning
+            $GroupDescription, # Group Description
+            "true",           # Polling Enabled (true)
+            $memberXml        # Group Members in XML format
         ).InnerText
     } else { 
         Write-Output "Group named: $GroupName already exists, skipping" 
