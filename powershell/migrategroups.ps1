@@ -29,21 +29,29 @@ foreach ($Group in $Groups) {
         
         # Get the dynamic query for the group from the source
         $DynamicQuery = Get-SwisData -SwisConnection $SwisSource -Query "SELECT Expression FROM Orion.ContainerMemberDefinition WHERE ContainerID = $GroupID"
-
-        # Create the group in the destination
-        $NewGroupID = New-SwisObject -SwisConnection $SwisDest -EntityName "Orion.Container" -Properties @{
-            Name = $GroupName
-            Description = $GroupDescription
-            Enabled = 'true'
-        }
-
-        # Apply the dynamic query to the newly created group if there is one
+        
+        # Format dynamic queries into the members array
+        $members = @()
         foreach ($Query in $DynamicQuery) {
-            New-SwisObject -SwisConnection $SwisDest -EntityName "Orion.ContainerMemberDefinition" -Properties @{
-                ContainerID = $NewGroupID
-                Expression = $Query.Expression
-            }
+            $members += @{ Name = $GroupName; Definition = "filter:/Orion.Nodes[$($Query.Expression)]" }
         }
+
+        # Create the group in the destination with dynamic members
+        $groupId = Invoke-SwisVerb -SwisConnection $SwisDest -EntityName "Orion.Container" -Verb "CreateContainer" -Arguments @(
+            $GroupName,   # Group Name
+            "Core",       # Owner
+            60,           # Refresh Frequency (seconds)
+            0,            # Status rollup mode: 0 = Mixed
+            $GroupDescription,  # Group Description
+            "true",       # Polling enabled
+            ([xml]@(
+                "<ArrayOfMemberDefinitionInfo xmlns='http://schemas.solarwinds.com/2008/Orion'>",
+                [string]($members | ForEach-Object {
+                    "<MemberDefinitionInfo><Name>$($_.Name)</Name><Definition>$($_.Definition)</Definition></MemberDefinitionInfo>"
+                }),
+                "</ArrayOfMemberDefinitionInfo>"
+            )).DocumentElement
+        ).InnerText
     } else { 
         Write-Output "Group named: $GroupName already exists, skipping" 
     }
